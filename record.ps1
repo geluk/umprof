@@ -16,6 +16,9 @@ Note that you must run this script from an administrator shell.
 
 .EXAMPLE
 .\record.ps1 -Name driving-hb
+
+.LINK
+https://github.com/geluk/umprof
 #>
 param(
     # How long to record, in seconds. If not specified, capturing will continue

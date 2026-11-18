@@ -3,6 +3,7 @@ name = "unity-mono-profiler"
 version = "0.1.0"
 edition = "2024"
 description = "Profiles Unity games using WPR and the Firefox profile viewer."
+repository = "https://github.com/geluk/umprof"
 
 [[bin]]
 name = "umprof"

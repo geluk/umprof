@@ -104,7 +104,11 @@ fn init_logging(verbose: bool) {
 }
 
 #[derive(Parser)]
-#[command(version, about)]
+#[command(
+    version,
+    about,
+    after_help = concat!("Full documentation: ", env!("CARGO_PKG_REPOSITORY"))
+)]
 struct Args {
     /// The ETW trace to read
     trace: PathBuf,
