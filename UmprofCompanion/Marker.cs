@@ -8,7 +8,7 @@ namespace UmprofCompanion;
 /// <summary>
 /// Writes markers that umprof shows in its profiles. Does nothing unless MONO_JIT_MAP_DIR is set.
 /// </summary>
-public static class UmprofMarkers
+public static class Marker
 {
     /// <summary>Writes an interval end marker upon being disposed.</summary>
     public struct Scope : IDisposable
@@ -41,7 +41,7 @@ public static class UmprofMarkers
     // must be held while writing to the file or the line
     private static readonly object writeLock = new object();
 
-    static UmprofMarkers()
+    static Marker()
     {
         // makes the runtime open the file on first use, rather than whenever it likes
     }
@@ -49,10 +49,7 @@ public static class UmprofMarkers
     /// <summary>
     /// True if markers will be written. Will be set to false on failure, or if the
     /// MONO_JIT_MAP_DIR environment variable is not set.</summary>
-    public static bool Enabled
-    {
-        get { return writer != null; }
-    }
+    public static bool Enabled => writer != null;
 
     /// <summary>
     /// Starts measuring an interval. The interval ends when the returned scope is disposed.
