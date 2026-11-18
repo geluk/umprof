@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>UmprofCompanion</RootNamespace>
+    <AssemblyName>UmprofCompanion</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+
+    <PackageId>UmprofCompanion</PackageId>
+    <Version>0.1.0</Version>
+    <Description>A managed companion library for umprof, to aid in tracing performance issues.</Description>
+    <PackageTags>unity;mono;profiler;etw;markers</PackageTags>
+    <PackageProjectUrl>https://github.com/geluk/umprof</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/geluk/umprof</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+</Project>
