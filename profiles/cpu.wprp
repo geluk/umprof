@@ -2,10 +2,10 @@
 <!--
   Contains two profiles for running CPU sampling in Unity games. These are:
 
-  UnityMonoCpu: Default CPU sampling. Records stack traces for each sample.
+  Cpu: Default CPU sampling. Records stack traces for each sample.
   When no profile is specified, this one will be used.
 
-  UnityMonoWaits: Also records stack traces for every context switch, to debug
+  CpuWaits: Also records stack traces for every context switch, to debug
   waits and thread synchronization issues. This produces a lot of data (on the
   order of gigabytes per minute), so it is not recommended for normal use.
 
@@ -34,14 +34,14 @@
   minutes, depending on your use case. Around one minute will generally be a
   good starting point.
 -->
-<WindowsPerformanceRecorder Version="1.0" Author="unity-mono-profiler" Comments="CPU sampling for Unity Mono games">
+<WindowsPerformanceRecorder Version="1.0" Author="umprof" Comments="CPU sampling profiles for the Unity Mono runtime.">
   <Profiles>
     <SystemCollector Id="SystemCollector" Name="NT Kernel Logger">
       <BufferSize Value="1024" />
       <Buffers Value="512" />
     </SystemCollector>
 
-    <EventCollector Id="EventCollector" Name="UnityMono Event Collector">
+    <EventCollector Id="EventCollector" Name="Unity Mono Event Collector">
       <BufferSize Value="1024" />
       <Buffers Value="64" />
     </EventCollector>
@@ -92,7 +92,7 @@
 
     <EventProvider Id="DxgiProvider" Name="ca11c036-0102-4a2d-a6ad-f03cfed5d3c9" Level="5" />
 
-    <Profile Id="UnityMonoCpu.Verbose.File" Name="UnityMonoCpu" Description="CPU samples with stacks" LoggingMode="File" DetailLevel="Verbose">
+    <Profile Id="Cpu.Verbose.File" Name="Cpu" Description="CPU samples with stacks" LoggingMode="File" DetailLevel="Verbose">
       <Collectors>
         <SystemCollectorId Value="SystemCollector">
           <SystemProviderId Value="CpuProvider" />
@@ -106,7 +106,7 @@
       </Collectors>
     </Profile>
 
-    <Profile Id="UnityMonoWaits.Verbose.File" Name="UnityMonoWaits" Description="CPU samples and context switches with stacks (heavy)" LoggingMode="File" DetailLevel="Verbose">
+    <Profile Id="CpuWaits.Verbose.File" Name="CpuWaits" Description="CPU samples and context switches with stacks" LoggingMode="File" DetailLevel="Verbose">
       <Collectors>
         <SystemCollectorId Value="SystemCollector">
           <SystemProviderId Value="WaitsProvider" />
