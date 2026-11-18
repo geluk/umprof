@@ -1,0 +1,33 @@
+[package]
+name = "unity-mono-profiler"
+version = "0.1.0"
+edition = "2024"
+description = "Profiles Unity games using WPR and the Firefox profile viewer."
+
+[[bin]]
+name = "umprof"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+env_logger = { version = "0.11", default-features = false, features = ["auto-color"] }
+futures = "0.3"
+fxprof-processed-profile = "0.8.1"
+log = "0.4"
+rustc-hash = "2"
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread"] }
+wholesym = "0.8"
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_System_Diagnostics_Etw",
+    "Win32_System_Time",
+] }
+
+[patch.crates-io]
+# This needs a manual patch until upstream is fixed
+symsrv = { path = "../oss/symsrv" }
+
+[profile.release]
+lto = "thin"
