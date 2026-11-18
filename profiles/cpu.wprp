@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Contains two profiles for running CPU sampling in Unity games. These are:
+
+  UnityMonoCpu: Default CPU sampling. Records stack traces for each sample.
+  When no profile is specified, this one will be used.
+
+  UnityMonoWaits: Also records stack traces for every context switch, to debug
+  waits and thread synchronization issues. This produces a lot of data (on the
+  order of gigabytes per minute), so it is not recommended for normal use.
+
+  In addition to the CPU samples, both profiles also record DXGI Present events,
+  which is emitted when the CPU has finished its part of the work necessary to
+  present a frame on the screen.
+
+  To adjust resolution, change the SampleRate element below. Note that higher
+  sample rates will increase the overhead of the profiler, which tends to
+  distort readings and will result in lower performance in game. The default
+  sample rate provides a decent balance between overhead and resolution.
+
+  You must run this with administrator privileges.
+  To start the profiler:
+
+  wpr -start cpu.wprp -filemode
+
+  To stop (substitute <name> with a name for this run):
+
+  wpr -stop $env:MONO_JIT_MAP_DIR\<name>.etl -skipPdbGen
+
+  Writing the trace to the JIT map directory (as we do here) is recommended,
+  as it allows the profile generator to discover the JIT map file automatically.
+
+  You will generally want to run the profiler for a few seconds to a few
+  minutes, depending on your use case. Around one minute will generally be a
+  good starting point.
+-->
+<WindowsPerformanceRecorder Version="1.0" Author="unity-mono-profiler" Comments="CPU sampling for Unity Mono games">
+  <Profiles>
+    <SystemCollector Id="SystemCollector" Name="NT Kernel Logger">
+      <BufferSize Value="1024" />
+      <Buffers Value="512" />
+    </SystemCollector>
+
+    <EventCollector Id="EventCollector" Name="UnityMono Event Collector">
+      <BufferSize Value="1024" />
+      <Buffers Value="64" />
+    </EventCollector>
+
+    <SystemProvider Id="CpuProvider">
+      <Keywords>
+        <Keyword Value="ProcessThread" />
+        <Keyword Value="Loader" />
+        <Keyword Value="SampledProfile" />
+      </Keywords>
+      <Stacks>
+        <Stack Value="SampledProfile" />
+      </Stacks>
+    </SystemProvider>
+
+    <SystemProvider Id="WaitsProvider">
+      <Keywords>
+        <Keyword Value="ProcessThread" />
+        <Keyword Value="Loader" />
+        <Keyword Value="SampledProfile" />
+        <Keyword Value="CSwitch" />
+        <Keyword Value="ReadyThread" />
+      </Keywords>
+      <Stacks>
+        <Stack Value="SampledProfile" />
+        <Stack Value="CSwitch" />
+        <Stack Value="ReadyThread" />
+      </Stacks>
+    </SystemProvider>
+
+    <!--
+      CPU sample interval, in hundreds of nanoseconds. The default records at
+      an interval of 10000 (1 ms, i.e. 1 kHz). Run `wpr -pmcsources` and look at
+      the `Timer` source to see which interval values are supported on your
+      machine before adjusting this.
+
+      Note that a lower interval will increase the overhead of the profiler,
+      as the CPU starts to spend more and more time taking samples rather than
+      doing actual work. This tends to distort readings and result in lower
+      performance in game. The default sample rate provides a decent balance
+      between overhead, detail, and accuracy.
+    -->
+    <HardwareCounter Id="SampleRate">
+      <SampledCounters>
+        <SampledCounter Value="Timer" Interval="10000" />
+      </SampledCounters>
+    </HardwareCounter>
+
+    <EventProvider Id="DxgiProvider" Name="ca11c036-0102-4a2d-a6ad-f03cfed5d3c9" Level="5" />
+
+    <Profile Id="UnityMonoCpu.Verbose.File" Name="UnityMonoCpu" Description="CPU samples with stacks" LoggingMode="File" DetailLevel="Verbose">
+      <Collectors>
+        <SystemCollectorId Value="SystemCollector">
+          <SystemProviderId Value="CpuProvider" />
+          <HardwareCounterId Value="SampleRate" />
+        </SystemCollectorId>
+        <EventCollectorId Value="EventCollector">
+          <EventProviders>
+            <EventProviderId Value="DxgiProvider" />
+          </EventProviders>
+        </EventCollectorId>
+      </Collectors>
+    </Profile>
+
+    <Profile Id="UnityMonoWaits.Verbose.File" Name="UnityMonoWaits" Description="CPU samples and context switches with stacks (heavy)" LoggingMode="File" DetailLevel="Verbose">
+      <Collectors>
+        <SystemCollectorId Value="SystemCollector">
+          <SystemProviderId Value="WaitsProvider" />
+          <HardwareCounterId Value="SampleRate" />
+        </SystemCollectorId>
+        <EventCollectorId Value="EventCollector">
+          <EventProviders>
+            <EventProviderId Value="DxgiProvider" />
+          </EventProviders>
+        </EventCollectorId>
+      </Collectors>
+    </Profile>
+  </Profiles>
+</WindowsPerformanceRecorder>
