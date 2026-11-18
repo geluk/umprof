@@ -27,7 +27,7 @@ windows = { version = "0.62", features = [
 
 [patch.crates-io]
 # This needs a manual patch until upstream is fixed
-symsrv = { path = "../oss/symsrv" }
+symsrv = { path = "../../oss/symsrv" }
 
 [profile.release]
 lto = "thin"
