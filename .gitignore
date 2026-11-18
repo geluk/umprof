@@ -1,0 +1,13 @@
+# Rust build output
+/umprof/target/
+
+# Default output folder
+/umprof/out/
+
+# .NET build output
+/UmprofCompanion/bin/
+/UmprofCompanion/obj/
+
+# User configuration
+/UmprofCompanion/.idea
+
