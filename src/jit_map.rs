@@ -1,7 +1,7 @@
 //! Contains functionality for reading JIT maps as emitted by our patched mono runtime.
 
 use crate::qpc::Qpc;
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use log::warn;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -42,13 +42,13 @@ impl JitMap {
         let mut entries = Vec::new();
         let mut qpc_freq = None;
         for (index, line) in text.lines().enumerate() {
-            if index == 0 {
-                if let Some(header) = line.strip_prefix('#') {
-                    qpc_freq = header
-                        .split_whitespace()
-                        .find_map(|f| f.strip_prefix("qpc-freq=")?.parse().ok());
-                    continue;
-                }
+            if index == 0
+                && let Some(header) = line.strip_prefix('#')
+            {
+                qpc_freq = header
+                    .split_whitespace()
+                    .find_map(|f| f.strip_prefix("qpc-freq=")?.parse().ok());
+                continue;
             }
             let Some(entry) = Self::parse_entry(line) else {
                 bail!(

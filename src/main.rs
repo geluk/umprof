@@ -8,11 +8,11 @@ mod resolve;
 mod symbols;
 mod trace;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use clap::Parser;
 use images::ImageTable;
 use jit_map::JitMap;
-use log::{debug, info, warn, Level, LevelFilter};
+use log::{Level, LevelFilter, debug, info, warn};
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
@@ -194,14 +194,13 @@ fn default_symbol_cache() -> Result<PathBuf> {
 
 impl Args {
     fn resolve_map_dir(&self) -> PathBuf {
-        let map_dir = self.map_dir.clone().unwrap_or_else(|| {
+        self.map_dir.clone().unwrap_or_else(|| {
             self.trace
                 .parent()
                 .filter(|p| !p.as_os_str().is_empty())
                 .unwrap_or(Path::new("."))
                 .to_path_buf()
-        });
-        map_dir
+        })
     }
 
     fn resolve_candidate_pids(&self, map_dir: &Path) -> Result<FxHashSet<u32>> {
