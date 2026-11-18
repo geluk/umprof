@@ -1,17 +1,17 @@
 //! Turns a raw trace into a profile.
 
-use crate::etw::{TraceInfo, KERNEL_START};
+use crate::etw::{KERNEL_START, TraceInfo};
 use crate::images::{Image, ImageTable};
 use crate::jit_map::JitMap;
-use crate::model::{Diagnostics, Frame, FrameKind, Present, Profile, Sample, Thread};
+use crate::model::{
+    DiagnosticMessage, Diagnostics, Frame, FrameKind, Present, Profile, Sample, Thread,
+    USER_STACK_LOST,
+};
 use crate::qpc::Qpc;
-use crate::symbols::{ImageRequest, Symbolizer};
+use crate::symbols::{ImageRequest, SymbolProblem, Symbolizer};
 use crate::trace::{RawPresent, RawSample, RawTrace};
 use anyhow::Result;
 use rustc_hash::{FxHashMap, FxHashSet};
-
-/// Descriptor for kernel frames whose user stack was never reported
-const USER_STACK_LOST: &str = "[user stack lost]";
 
 /// Interns frames, aggregating different addresses in one function into a single frame.
 struct FrameTable {
@@ -214,23 +214,25 @@ fn create_diagnostics(info: &TraceInfo, samples: &[RawSample], jit: &JitMap) -> 
         unsupported_events: info.unsupported_events.values().sum(),
         ..Default::default()
     };
-    for ((opcode, version), count) in &info.unsupported_events {
-        diagnostics.messages.push(format!(
-            "could not read {count} events with opcode {opcode}, version {version}"
-        ));
+    for (&(opcode, version), &count) in &info.unsupported_events {
+        diagnostics.messages.push(DiagnosticMessage::UnknownEvent {
+            opcode,
+            version,
+            count,
+        });
     }
-    if jit.qpc_freq.is_some_and(|f| f != info.perf_freq) {
-        diagnostics.messages.push(format!(
-            "the JIT map and trace do not run on the same clock (jit: {:?} Hz, trace: {} Hz), this may result in incorrect method names",
-            jit.qpc_freq, info.perf_freq
-        ));
+    if let Some(jit_hz) = jit.qpc_freq.filter(|&f| f != info.perf_freq) {
+        diagnostics.messages.push(DiagnosticMessage::ClockMismatch {
+            jit_hz,
+            trace_hz: info.perf_freq,
+        });
     }
     let lost = samples.iter().filter(|s| s.user_stack_lost).count();
     if lost > 0 {
-        diagnostics.messages.push(format!(
-            "{lost} kernel samples ({:.1}%) could not be traced back to userspace, they are marked as \"{USER_STACK_LOST}\"",
-            lost as f64 * 100.0 / samples.len() as f64
-        ));
+        diagnostics.messages.push(DiagnosticMessage::UserStackLost {
+            lost,
+            total: samples.len(),
+        });
     }
 
     diagnostics
@@ -278,15 +280,29 @@ fn resolve_native_names(
             size: image.end_addr - image.base_addr,
             rvas,
         });
-        requested.push((image.name.as_str(), addresses));
+        requested.push((image, addresses));
     }
 
     let results = symbolizer.resolve(requests);
     for ((image, addresses), result) in requested.into_iter().zip(results) {
         if let Some(problem) = result.problem {
-            diagnostics
-                .messages
-                .push(format!("no symbols for {image}: {problem}"));
+            let image_name = image.name.clone();
+            let is_driver = image.base_addr >= KERNEL_START;
+            diagnostics.messages.push(match problem {
+                SymbolProblem::ImageDiffers => DiagnosticMessage::ImageDiffers {
+                    image_name,
+                    is_driver,
+                },
+                SymbolProblem::PdbNotFound => DiagnosticMessage::PdbNotFound {
+                    image_name,
+                    is_driver,
+                },
+                SymbolProblem::Failed(error) => DiagnosticMessage::SymbolsFailed {
+                    image_name,
+                    is_driver,
+                    error,
+                },
+            });
         }
         for (address, name) in addresses.into_iter().zip(result.names) {
             if let Some(name) = name {

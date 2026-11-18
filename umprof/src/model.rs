@@ -4,6 +4,9 @@
 use std::fmt::{Display, Formatter};
 use std::time::{Duration, SystemTime};
 
+/// Descriptor for kernel frames whose user stack was never reported
+pub const USER_STACK_LOST: &str = "[user stack lost]";
+
 /// A full profile, holding information for multiple threads within single process.
 #[derive(Debug, Clone)]
 pub struct Profile {
@@ -30,7 +33,77 @@ pub struct Diagnostics {
     pub unsupported_events: u64,
     /// Number of frames not pointing into a loaded image or a JIT map.
     pub unknown_frames: u64,
-    pub messages: Vec<String>,
+    pub messages: Vec<DiagnosticMessage>,
+}
+
+#[derive(Debug, Clone)]
+/// Diagnostic message indicating a problem during resolution.
+pub enum DiagnosticMessage {
+    /// The file on disk does not match the image loaded in the trace.
+    ImageDiffers { image_name: String, is_driver: bool },
+    /// A PDB was not found for this image.
+    PdbNotFound { image_name: String, is_driver: bool },
+    /// Reading this image or its symbols failed.
+    SymbolsFailed {
+        image_name: String,
+        is_driver: bool,
+        error: String,
+    },
+    /// The trace contains events that could not be read.
+    UnknownEvent { opcode: u8, version: u8, count: u64 },
+    /// Mismatch between the JIT and trace clock frequencies.
+    ClockMismatch { jit_hz: u64, trace_hz: u64 },
+    /// Kernel samples that could not be traced back to userspace.
+    UserStackLost { lost: usize, total: usize },
+}
+
+impl DiagnosticMessage {
+    /// True if this concerns a kernel driver.
+    pub fn is_about_driver(&self) -> bool {
+        match self {
+            Self::ImageDiffers { is_driver, .. }
+            | Self::PdbNotFound { is_driver, .. }
+            | Self::SymbolsFailed { is_driver, .. } => *is_driver,
+            _ => false,
+        }
+    }
+}
+
+impl Display for DiagnosticMessage {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        match self {
+            Self::ImageDiffers { image_name, .. } => write!(
+                f,
+                "no symbols for {image_name}: the file on disk differs from the one in the trace"
+            ),
+            Self::PdbNotFound { image_name, .. } => write!(
+                f,
+                "no symbols for {image_name}: could not find a PDB on any symbol server"
+            ),
+            Self::SymbolsFailed {
+                image_name, error, ..
+            } => write!(f, "no symbols for {image_name}: {error}"),
+            Self::UnknownEvent {
+                opcode,
+                version,
+                count,
+            } => write!(
+                f,
+                "could not read {count} events with opcode {opcode}, version {version}"
+            ),
+            Self::ClockMismatch { jit_hz, trace_hz } => write!(
+                f,
+                "the JIT map and trace do not run on the same clock (jit: {jit_hz} Hz, trace: \
+                 {trace_hz} Hz), this may result in incorrect method names"
+            ),
+            Self::UserStackLost { lost, total } => write!(
+                f,
+                "{lost} kernel samples ({:.1}%) could not be traced back to userspace, they are \
+                 marked as \"{USER_STACK_LOST}\"",
+                *lost as f64 * 100.0 / *total as f64
+            ),
+        }
+    }
 }
 
 /// A single thread being sampled.

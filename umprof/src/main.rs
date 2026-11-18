@@ -20,6 +20,8 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 use symbols::Symbolizer;
 
+use crate::model::DiagnosticMessage;
+
 fn main() -> Result<()> {
     let args = Args::parse();
     init_logging(args.verbose);
@@ -146,11 +148,20 @@ fn write_output(profile: &model::Profile, dir: &Path, name: &str) -> Result<Path
     Ok(path)
 }
 
-/// Warns about anything that makes the profile less trustworthy. The summary output used to list
-/// these.
+/// Warns about anything that makes the profile less trustworthy.
 fn report_diagnostics(d: &model::Diagnostics) {
+    const USER_STACK_LOSS_THRESH: f64 = 0.1;
+
     for message in &d.messages {
-        warn!("{message}");
+        if message.is_about_driver() {
+            debug!("{message}");
+        } else if let DiagnosticMessage::UserStackLost { lost, total } = *message
+            && ((lost as f64 / total as f64) < USER_STACK_LOSS_THRESH)
+        {
+            info!("{message}");
+        } else {
+            warn!("{message}");
+        }
     }
     if d.events_lost > 0 || d.buffers_lost > 0 {
         warn!(

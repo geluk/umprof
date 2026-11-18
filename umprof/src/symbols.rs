@@ -1,6 +1,6 @@
 //! Resolves native addresses to function names, using PDBs from local folders and symbol servers.
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use futures::stream::{self, StreamExt};
 use log::debug;
 use std::path::{Path, PathBuf};
@@ -26,7 +26,23 @@ pub struct ImageResult {
     /// One entry per requested address.
     pub names: Vec<Option<String>>,
     /// Why the image has no names, if so.
-    pub problem: Option<String>,
+    pub problem: Option<SymbolProblem>,
+}
+
+/// Describes a problem with name resolution in an image.
+pub enum SymbolProblem {
+    /// The file on disk does not match the image loaded in the trace.
+    ImageDiffers,
+    /// A PDB was not found for this image.
+    PdbNotFound,
+    /// Some other failure while reading the image or its symbols.
+    Failed(String),
+}
+
+impl SymbolProblem {
+    fn failed(error: impl Into<anyhow::Error>) -> Self {
+        Self::Failed(format!("{:#}", error.into()))
+    }
 }
 
 pub struct Symbolizer {
@@ -71,11 +87,7 @@ impl Symbolizer {
     async fn resolve_image(&self, request: ImageRequest<'_>) -> ImageResult {
         let started = Instant::now();
         let mut names = vec![None; request.rvas.len()];
-        let problem = self
-            .try_resolve_image(&request, &mut names)
-            .await
-            .err()
-            .map(|e| format!("{e:#}"));
+        let problem = self.try_resolve_image(&request, &mut names).await.err();
         debug!(
             "symbolized {} addresses in {} in {:.2}s",
             names.len(),
@@ -92,20 +104,25 @@ impl Symbolizer {
         &self,
         request: &ImageRequest<'_>,
         names: &mut Vec<Option<String>>,
-    ) -> Result<()> {
-        let info = SymbolManager::library_info_for_binary_at_path(request.path, None).await?;
+    ) -> Result<(), SymbolProblem> {
+        let info = SymbolManager::library_info_for_binary_at_path(request.path, None)
+            .await
+            .map_err(SymbolProblem::failed)?;
 
         if differs_from_trace(info.code_id.as_ref(), request.timestamp, request.size) {
             // This tends to happen if the trace is captured before, and analysed after
             // a (Windows) update.
-            bail!("file on disk differs from the one in the trace");
+            return Err(SymbolProblem::ImageDiffers);
         }
 
-        *names = self.lookup_all(request).await?;
+        *names = self
+            .lookup_all(request)
+            .await
+            .map_err(SymbolProblem::failed)?;
         // `wholesym` doesn't tell us if it didn't find the PDB, and falls back to exports and invented
         // names. We will keep them as they are still better than nothing, but we will report it.
         if is_mostly_unnamed(names) {
-            bail!("could not find a PDB on any symbol server");
+            return Err(SymbolProblem::PdbNotFound);
         }
         Ok(())
     }
