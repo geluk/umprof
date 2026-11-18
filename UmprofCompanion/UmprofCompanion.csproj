@@ -12,7 +12,7 @@
     <Deterministic>true</Deterministic>
 
     <PackageId>UmprofCompanion</PackageId>
-    <Version>0.1.0</Version>
+    <Version>1.0.0</Version>
     <Description>A managed companion library for umprof, to aid in tracing performance issues.</Description>
     <PackageTags>unity;mono;profiler;etw;markers</PackageTags>
     <PackageProjectUrl>https://github.com/geluk/umprof</PackageProjectUrl>

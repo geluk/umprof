@@ -11,3 +11,6 @@
 # User configuration
 /UmprofCompanion/.idea
 
+
+# Release packages
+/dist/
