@@ -159,6 +159,11 @@ fn report_diagnostics(d: &model::Diagnostics) {
             && ((lost as f64 / total as f64) < USER_STACK_LOSS_THRESH)
         {
             info!("{message}");
+        } else if let DiagnosticMessage::PdbNotFound { image_name, .. }
+        | DiagnosticMessage::ImageDiffers { image_name, .. } = message
+            && !image_name.eq_ignore_ascii_case("unityplayer.dll")
+        {
+            info!("{message}");
         } else {
             warn!("{message}");
         }
